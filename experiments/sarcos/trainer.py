@@ -163,7 +163,7 @@ def train(
             losses = get_losses(pred, ys)
 
             ray = ray.squeeze(0)
-            loss = solver(losses, ray, list(hnet.parameters()))
+            loss = solver(losses, ray, list(hnet.parameters()), feat=xs, label=ys, model=net)       #ajout des paramètres feat, label et model
 
             loss.backward()
             epoch_iter.set_description(
