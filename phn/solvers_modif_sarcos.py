@@ -4,6 +4,7 @@ import cvxopt
 import cvxpy as cp
 import numpy as np
 import torch
+from objective_functions.objective_functions import f1_norm, f2_norm        #ajout de l'importation
 
 """Implementation of Pareto HyperNetworks with:
 1. Linear scalarization
@@ -46,7 +47,7 @@ class EPOSolver(Solver):
 
     def get_weighted_loss(self, losses, ray, parameters=None, **kwargs):
         assert parameters is not None
-        return self.solver.get_weighted_loss(losses, ray, parameters)
+        return self.solver.get_weighted_loss(losses, ray, parameters, kwargs['feat'], kwargs['label'], kwargs['model'])       #ajout de : kwargs [...] ['model']
 
 
 class EPO:
@@ -69,8 +70,8 @@ class EPO:
             axis=0,
         )
 
-    def get_weighted_loss(self, losses, ray, parameters):
-        lp = ExactParetoLP(m=self.n_tasks, n=self.n_params, r=ray.cpu().numpy())
+    def get_weighted_loss(self, losses, ray, parameters, feat, label, model):       #ajout des parametres feat, label, model
+        lp = ExactParetoLP(m=self.n_tasks, n=self.n_params, feat=feat, label=label, model=model, r=ray.cpu().numpy())        #ajout de : feat= [...] self.model
 
         grads = []
         for i, loss in enumerate(losses):
@@ -103,7 +104,7 @@ class EPO:
 class ExactParetoLP(object):
     """modifications of the code in https://github.com/dbmptr/EPOSearch"""
 
-    def __init__(self, m, n, r, eps=1e-4):
+    def __init__(self, m, n, r, feat, label, model,  eps=1e-4):     #ajout des parametres feat, label, model
         cvxopt.glpk.options["msg_lev"] = "GLP_MSG_OFF"
         self.m = m
         self.n = n
@@ -117,7 +118,10 @@ class ExactParetoLP(object):
 
         self.alpha = cp.Variable(m)  # Variable to optimize
 
-        obj_bal = cp.Maximize(self.alpha @ self.Ca)  # objective for balance
+        #modification de la variable "obj_bal"
+        #voir s'il faut modifier les contraintes
+        #obj_bal = cp.Maximize(self.alpha @ self.Ca)  # objective for balance
+        obj_bal = cp.Minimize(f2_norm(model))
         constraints_bal = [
             self.alpha >= 0,
             cp.sum(self.alpha) == 1,  # Simplex
@@ -125,7 +129,10 @@ class ExactParetoLP(object):
         ]
         self.prob_bal = cp.Problem(obj_bal, constraints_bal)  # LP balance
 
-        obj_dom = cp.Maximize(cp.sum(self.alpha @ self.C))  # obj for descent
+        #modification de la variable "obj_dom"
+        #voir s'il faut modifier les contraintes
+        #obj_dom = cp.Maximize(cp.sum(self.alpha @ self.C))  # obj for descent
+        obj_dom = cp.Minimize(f1_norm(feat, label, model))
         constraints_res = [
             self.alpha >= 0,
             cp.sum(self.alpha) == 1,  # Restrict
