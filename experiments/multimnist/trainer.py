@@ -191,7 +191,7 @@ def train(
             losses = torch.stack((l1, l2))
 
             ray = ray.squeeze(0)
-            loss = solver(losses, ray, list(hnet.parameters()), feat=xs, label=ys, model=net)       #ajout des paramètres feat, label et model
+            loss = solver(losses, ray, list(hnet.parameters()), feat=img, label=ys, model=net)       #ajout des paramètres feat, label et model
 
             loss.backward()
 
