@@ -1,3 +1,4 @@
 *.psv
 *.pyc
 *.csv
+*.~lock.*
