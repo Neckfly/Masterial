@@ -2,7 +2,7 @@ from torch import nn
 import torch.nn.functional as F
 from collections import OrderedDict
 
-class TransformerHyper(nn.Module):
+class HyperNet(nn.Module):
     def __init__(self, ray_hidden_dim=100, model = None):
         super().__init__()
         self.ray_mlp = nn.Sequential(
@@ -100,15 +100,3 @@ class TransformerHyper(nn.Module):
 
         return out_dict
     '''
-
-
-class TargetTransformer(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x, weights):
-        for i in range(int(len(weights) / 2)):
-            x = F.linear(x, weights[f"fc_{i}_weights"], weights[f"fc_{i}_bias"])
-            if i < int(len(weights) / 2) - 1:
-                x = F.relu(x)
-        return x

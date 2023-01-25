@@ -18,15 +18,21 @@ def get_group_regularization(weights):
 
 def sparse_group_lasso(weights):
     grouplasso = get_group_regularization(weights)
-    #l1 = torch.linalg.norm(torch.concat([torch.reshape(x[1] ,[-1]) for x in model.named_parameters()], dim=0))
-    l1 = torch.linalg.norm(torch.concat([torch.reshape(x[1] ,[-1]) for x in weights.items()], dim=0))
+    #l1 = torch.linalg.norm(torch.cat([torch.reshape(x[1] ,[-1]) for x in model.named_parameters()], dim=0))
+    l1 = torch.linalg.norm(torch.cat([torch.reshape(x[1] ,[-1]) for x in weights.items()], dim=0))
     
     sparse_lasso = grouplasso + l1
     return sparse_lasso
 
+'''
 def f1_norm(feat, label, model):
-    cross_entropy_norm = nn.CrossEntropyLoss()(label, model(feat))
+    cross_entropy_norm = nn.CrossEntropyLoss()(label, model(feat).long())
     return cross_entropy_norm
+'''
+
+def f1_norm(feat, label, model, lossWeight):
+    criterion = nn.BCEWithLogitsLoss(pos_weight = lossWeight)
+    return criterion(label, model(feat))
 
 def f2_norm(max_b, weights):
     s_g_l = sparse_group_lasso(weights)
