@@ -5,33 +5,30 @@
 # This class defiines the objective functions of the neural network. 
 #########################################################################
 
-import tensorflow as tf
+import torch
+import torch.nn as nn
 
 def l21_norm(W): 
-    return tf.reduce_sum(tf.norm(W, axis=1))	#reduce_sum -> sum en pytorch
+    return torch.sum(torch.linalg.norm(W, dim=-1))
 
-def get_group_regularization(mlp_model):
-    const_coeff = lambda W: tf.sqrt(tf.cast(W.get_shape().as_list()[1] ,tf.float32))
-    return tf.reduce_sum([tf.multiply(const_coeff(W), l21_norm(W)) for W in mlp_model.trainable_variables[2::] if 'bias' not in W.name])
+def get_group_regularization(weights):
+    const_coeff = lambda W: torch.sqrt(torch.tensor(W.size(dim=-1), dtype=torch.float32))
+    #return torch.sum(torch.tensor([torch.multiply(const_coeff(W), l21_norm(W)) for name, W in model.named_parameters() if 'bias' not in name]))
+    return torch.sum(torch.tensor([torch.multiply(const_coeff(W), l21_norm(W)) for name, W in weights.items() if 'bias' not in name]))
 
-def get_L1_norm(mlp_model):		#doit exister en pytorch
-    variables = [tf.reshape(v ,[-1]) for v in mlp_model.trainable_variables[2::]]
-    variables = tf.concat(variables, axis= 0)
-    return tf.norm(variables, ord = 1)
-
-def sparse_group_lasso(mlp_model):
-    grouplasso = get_group_regularization(mlp_model)
-    l1 = get_L1_norm(mlp_model)
+def sparse_group_lasso(weights):
+    grouplasso = get_group_regularization(weights)
+    #l1 = torch.linalg.norm(torch.concat([torch.reshape(x[1] ,[-1]) for x in model.named_parameters()], dim=0))
+    l1 = torch.linalg.norm(torch.concat([torch.reshape(x[1] ,[-1]) for x in weights.items()], dim=0))
+    
     sparse_lasso = grouplasso + l1
     return sparse_lasso
 
-def f1_norm(feat, label, max_a, mlp_model):	#en pytorch : crossentropie
-    cross_entropy_norm = tf.reduce_mean(tf.keras.losses.categorical_crossentropy(label, mlp_model(feat))) / max_a	#reduce_mean -> mean en pytorch
+def f1_norm(feat, label, model):
+    cross_entropy_norm = nn.CrossEntropyLoss()(label, model(feat))
     return cross_entropy_norm
 
-def f2_norm(max_b, mlp_model):
-    s_g_l = sparse_group_lasso(mlp_model)
-    sparse_group_lasso_norm = s_g_l/ max_b
+def f2_norm(max_b, weights):
+    s_g_l = sparse_group_lasso(weights)
+    sparse_group_lasso_norm = s_g_l / max_b
     return sparse_group_lasso_norm
-
-    

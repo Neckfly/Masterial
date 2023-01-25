@@ -47,7 +47,7 @@ class EPOSolver(Solver):
 
     def get_weighted_loss(self, losses, ray, parameters=None, **kwargs):
         assert parameters is not None
-        return self.solver.get_weighted_loss(losses, ray, parameters, kwargs['feat'], kwargs['label'], kwargs['model'])       #ajout de : kwargs [...] ['model']
+        return self.solver.get_weighted_loss(losses, ray, parameters, kwargs['feat'], kwargs['label'], kwargs['model'], kwargs['weights'])       #ajout de : kwargs [...] ['model']
 
 
 class EPO:
@@ -70,14 +70,14 @@ class EPO:
             axis=0,
         )
 
-    def get_weighted_loss(self, losses, ray, parameters, feat, label, model):       #ajout des parametres feat, label, model
-        lp = ExactParetoLP(m=self.n_tasks, n=self.n_params, feat=feat, label=label, model=model, r=ray.cpu().numpy())        #ajout de : feat= [...] self.model
+    def get_weighted_loss(self, losses, ray, parameters, feat, label, model, weights):       #ajout des parametres feat, label, model
+        lp = ExactParetoLP(m=self.n_tasks, n=self.n_params, feat=feat, label=label, model=model, weights=weights, r=ray.cpu().numpy())        #ajout de : feat= [...] self.model
 
         grads = []
-        for i, loss in enumerate(losses):
-            g = torch.autograd.grad(loss, parameters, retain_graph=True)
-            flat_grad = self._flattening(g)
-            grads.append(flat_grad.data)
+        #for i, loss in enumerate(losses):
+        g = torch.autograd.grad(losses, parameters, retain_graph=True)
+        flat_grad = self._flattening(g)
+        grads.append(flat_grad.data)
 
         G = torch.stack(grads)
         GG_T = G @ G.T
@@ -88,7 +88,8 @@ class EPO:
         try:
             alpha = lp.get_alpha(numpy_losses, G=GG_T, C=True)
         except Exception as excep:
-            print(excep)
+            #print("Error:")
+            #print(excep)        
             alpha = None
 
         if alpha is None:  # A patch for the issue in cvxpy
@@ -104,7 +105,7 @@ class EPO:
 class ExactParetoLP(object):
     """modifications of the code in https://github.com/dbmptr/EPOSearch"""
 
-    def __init__(self, m, n, r, feat, label, model,  eps=1e-4):     #ajout des parametres feat, label, model
+    def __init__(self, m, n, r, feat, label, model, weights, eps=1e-4):     #ajout des parametres feat, label, model, weights
         cvxopt.glpk.options["msg_lev"] = "GLP_MSG_OFF"
         self.m = m
         self.n = n
@@ -121,7 +122,7 @@ class ExactParetoLP(object):
         #modification de la variable "obj_bal"
         #voir s'il faut modifier les contraintes
         #obj_bal = cp.Maximize(self.alpha @ self.Ca)  # objective for balance
-        obj_bal = cp.Minimize(f2_norm(model))
+        obj_bal = cp.Minimize(f2_norm(1, weights).detach().numpy())
         constraints_bal = [
             self.alpha >= 0,
             cp.sum(self.alpha) == 1,  # Simplex
@@ -132,7 +133,7 @@ class ExactParetoLP(object):
         #modification de la variable "obj_dom"
         #voir s'il faut modifier les contraintes
         #obj_dom = cp.Maximize(cp.sum(self.alpha @ self.C))  # obj for descent
-        obj_dom = cp.Minimize(f1_norm(feat, label, model))
+        obj_dom = cp.Minimize(f1_norm(feat, label, model).detach().numpy())
         constraints_res = [
             self.alpha >= 0,
             cp.sum(self.alpha) == 1,  # Restrict
