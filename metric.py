@@ -473,15 +473,3 @@ def compute_prediction_utility(labels, predictions, dt_early=-12, dt_optimal=-6,
 
     # Find total utility for patient.
     return np.sum(u)
-
-'''
-if __name__ == '__main__':
-    auroc, auprc, accuracy, f_measure, utility = evaluate_sepsis_score(sys.argv[1], sys.argv[2])
-
-    output_string = 'AUROC|AUPRC|Accuracy|F-measure|Utility\n{}|{}|{}|{}|{}'.format(auroc, auprc, accuracy, f_measure, utility)
-    if len(sys.argv) > 3:
-        with open(sys.argv[3], 'w') as f:
-            f.write(output_string)
-    else:
-        print(output_string)
-'''

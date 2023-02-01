@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from utils import *
+from .utils import *
 
 
 class EncoderLayer(torch.nn.Module):
@@ -66,7 +66,8 @@ class Transformer(torch.nn.Module):
         
         #Dense layers for managing network inputs and outputs
         self.enc_input_fc = nn.Linear(input_size, dim_val)
-        self.dec_input_fc = nn.Linear(input_size, dim_val)
+        if(n_decoder_layers > 0):
+            self.dec_input_fc = nn.Linear(input_size, dim_val)
         self.out_fc = nn.Linear(dec_seq_len * dim_val, out_seq_len)
     
     def forward(self, x):
@@ -76,11 +77,13 @@ class Transformer(torch.nn.Module):
             e = enc(e)
         
         #decoder
-        d = self.decs[0](self.dec_input_fc(x[:,-self.dec_seq_len:]), e)
-        for dec in self.decs[1:]:
-            d = dec(d, e)
-            
-        #output
-        x = self.out_fc(d.flatten(start_dim=1))
+        if(len(self.decs) > 0):
+            d = self.decs[0](self.dec_input_fc(x[:,-self.dec_seq_len:]), e)
+            for dec in self.decs[1:]:
+                d = dec(d, e)
+
+            #output
+            x = self.out_fc(d.flatten(start_dim=1))
+            return x
         
-        return x
+        return self.out_fc(e.flatten(start_dim=1))

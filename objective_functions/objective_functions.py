@@ -30,8 +30,7 @@ def f1_norm(feat, label, model):
     return cross_entropy_norm
 '''
 
-def f1_norm(feat, label, model, lossWeight):
-    criterion = nn.BCEWithLogitsLoss(pos_weight = lossWeight)
+def f1_norm(feat, label, model, criterion):
     return criterion(label, model(feat))
 
 def f2_norm(max_b, weights):

@@ -47,7 +47,7 @@ class EPOSolver(Solver):
 
     def get_weighted_loss(self, losses, ray, parameters=None, **kwargs):
         assert parameters is not None
-        return self.solver.get_weighted_loss(losses, ray, parameters, kwargs['feat'], kwargs['label'], kwargs['model'], kwargs['weights'], kwargs['lossWeight'])       #ajout de : kwargs [...] ['model']
+        return self.solver.get_weighted_loss(losses, ray, parameters, kwargs['feat'], kwargs['label'], kwargs['model'], kwargs['weights'], kwargs['criterion'])       #ajout de : kwargs [...] ['model']
 
 
 class EPO:
@@ -70,8 +70,8 @@ class EPO:
             axis=0,
         )
 
-    def get_weighted_loss(self, losses, ray, parameters, feat, label, model, weights, lossWeight):       #ajout des parametres feat, label, model, weights, lossWeight
-        lp = ExactParetoLP(m=self.n_tasks, n=self.n_params, feat=feat, label=label, model=model, weights=weights, lossWeight=lossWeight, r=ray.cpu().numpy())        #ajout de : feat= [...] self.model
+    def get_weighted_loss(self, losses, ray, parameters, feat, label, model, weights, criterion):       #ajout des parametres feat, label, model, weights, lossWeight
+        lp = ExactParetoLP(m=self.n_tasks, n=self.n_params, feat=feat, label=label, model=model, weights=weights, criterion=criterion, r=ray.cpu().numpy())        #ajout de : feat= [...] self.model
 
         grads = []
         #for i, loss in enumerate(losses):
@@ -105,7 +105,7 @@ class EPO:
 class ExactParetoLP(object):
     """modifications of the code in https://github.com/dbmptr/EPOSearch"""
 
-    def __init__(self, m, n, r, feat, label, model, weights, lossWeight, eps=1e-4):     #ajout des parametres feat, label, model, weights, lossWeight
+    def __init__(self, m, n, r, feat, label, model, weights, criterion, eps=1e-4):     #ajout des parametres feat, label, model, weights, criterion
         cvxopt.glpk.options["msg_lev"] = "GLP_MSG_OFF"
         self.m = m
         self.n = n
@@ -133,7 +133,7 @@ class ExactParetoLP(object):
         #modification de la variable "obj_dom"
         #voir s'il faut modifier les contraintes
         #obj_dom = cp.Maximize(cp.sum(self.alpha @ self.C))  # obj for descent
-        obj_dom = cp.Minimize(f1_norm(feat, label, model, lossWeight).detach().cpu().numpy())
+        obj_dom = cp.Minimize(f1_norm(feat, label, model, criterion).detach().cpu().numpy())
         constraints_res = [
             self.alpha >= 0,
             cp.sum(self.alpha) == 1,  # Restrict
